@@ -1,0 +1,164 @@
+<!doctype html>
+<html>
+
+<head>
+  <title>Chatbot</title>
+  <link rel="stylesheet" href="chatbot.css">
+</head>
+
+<body>
+  <div class="js-container"></div>
+
+  <script src="https://unpkg.com/supersimpledev/react.js"></script>
+  <script src="https://unpkg.com/supersimpledev/react-dom.js"></script>
+
+  <script src="https://unpkg.com/supersimpledev/chatbot.js"></script>
+
+  <script src="https://unpkg.com/supersimpledev/babel.js"></script>
+  <script type="text/babel">
+    function ChatInput({ chats, setChats }) {
+      const [inputText, setInputText] = React.useState("")
+
+      function saveInputText(event) {
+        setInputText(event.target.value)
+      }
+
+      async function sendMessage() {
+        if (inputText.trim() === "") {
+          return alert("Invalid input")
+          setInputText("")
+        }
+
+        const response = await Chatbot.getResponse(inputText);
+        setChats([
+          ...chats,
+          {
+            id: crypto.randomUUID(),
+            message: inputText,
+            sender: "user",
+          },
+          {
+            id: crypto.randomUUID(),
+            message: response,
+            sender: "robot"
+          }
+        ]);
+        setInputText("");
+      }
+
+      return (
+        <div class="container">
+          <input
+            placeholder="Send a message to Chatbot..."
+            size="30"
+            value={inputText}
+            onChange={saveInputText}
+            class="input"
+          />
+          <button
+            onClick={sendMessage}
+            class="btn"
+          >
+            Send
+          </button>
+        </div>
+      );
+    }
+
+    function ChatMessage({ message, sender }) {
+      return (
+        <div>
+          {sender === "robot" && (
+            <img
+              src="./img/robot_profile.png"
+              alt="robot profile"
+              width="50"
+            />
+          )}
+          {message}
+          {sender === "user" && (
+            <img src="./img/user.png" alt="chat_message_profile" width="50" />
+          )}
+        </div>
+      );
+    }
+
+    function ChatMessages({ chats }) {
+      return (
+        <>
+          {chats.map((message) => (
+            <ChatMessage
+              key={message.id}
+              message={message.message}
+              sender={message.sender}
+            />
+          ))}
+        </>
+      );
+    }
+
+    function App() {
+      const [chats, setChats] = React.useState([
+        {
+          id: 1,
+          message: "hello chatbot",
+          sender: "user",
+        },
+        {
+          id: 2,
+          message: "Hello! How can I help you?",
+          sender: "robot",
+        },
+        {
+          id: 3,
+          message: "can you get me today's date?",
+          sender: "user",
+        },
+        {
+          id: 4,
+          message: "Today is October 15",
+          sender: "robot",
+        },
+      ]);
+      // const [chats, setChats] = array;
+      // const chats = array[0]; // Current chat Messages
+      // const setChats = array[1]; // Function that updates the array
+      const [atBottom, setAtBottom] = React.useState(true)
+      
+      function handleClick() {
+        setAtBottom(!atBottom)
+      }
+
+      return (
+        <>
+          {!atBottom && (
+            <div class={atBottom ? "bottom" : "top"}>
+              <ChatInput
+                chats={chats}
+                setChats={setChats}
+              />
+            </div>
+            // 
+          )}
+          <ChatMessages
+            chats={chats}
+          />
+          <button onClick={handleClick}>{atBottom ? "Move to top" : "Move to bottom"}</button>
+          {atBottom && (
+            <div>
+              <ChatInput
+                chats={chats}
+                setChats={setChats}
+              />
+            </div>
+          )}
+        </>
+      );
+    }
+
+    const container = document.querySelector(".js-container");
+    ReactDOM.createRoot(container).render(<App />);
+  </script>
+</body>
+
+</html>
