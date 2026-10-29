@@ -3,8 +3,9 @@ import ChatInput from './components/ChatInput';
 import ChatMessage from './components/ChatMessage';
 import TypingIndicator from './components/TypingIndicator';
 
-const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
-const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent';
+const API_KEY = import.meta.env.VITE_GEMINI_API_KEY?.trim();
+const GEMINI_MODEL = import.meta.env.VITE_GEMINI_MODEL || 'gemini-3.8-flash';
+const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
 
 function App() {
     const [messages, setMessages] = useState([]);
@@ -44,20 +45,24 @@ function App() {
         }
 
         const trimmed = userMessage.trim();
-        const lastMessages = messages.slice(-3).map((msg) => ({
+        const history = messages.slice(-4).map((msg) => ({
             role: msg.sender === 'user' ? 'user' : 'model',
             parts: [{ text: msg.message }],
         }));
 
+        while (history.length > 0 && history[0].role === 'model') {
+            history.shift();
+        }
+
         const requestBody = {
             contents: [
-                ...lastMessages,
+                ...history,
                 {
                     role: 'user',
                     parts: [{ text: trimmed }],
                 },
             ],
-            system_instruction: {
+            systemInstruction: {
                 parts: [{
                     text: 'Reply briefly and clearly. Keep answers concise, practical, and friendly. Avoid extra explanation. If you are unsure, say so in one sentence.'
                 }],
@@ -69,23 +74,33 @@ function App() {
         };
 
         const response = await fetchWithRetry(async () => {
-            const res = await fetch(`${GEMINI_API_URL}?key=${API_KEY}`, {
+            const res = await fetch(GEMINI_API_URL, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+                    'x-goog-api-key': API_KEY,
                 },
                 body: JSON.stringify(requestBody),
                 signal: AbortSignal.timeout(20000),
             });
 
             if (!res.ok) {
-                const text = await res.text();
+                const raw = await res.text();
+                let detail = raw;
 
-                if ([429, 500, 503].includes(res.status)) {
-                    throw new Error(`Temporary Gemini error: ${res.status}`);
+                try {
+                    detail = JSON.parse(raw)?.error?.message || raw;
+                } catch {
+                    detail = raw;
                 }
 
-                throw new Error(`API request failed: ${res.status} ${text}`);
+                const message = detail ? `${res.status} ${detail}` : `${res.status}`;
+
+                if ([429, 500, 503].includes(res.status)) {
+                    throw new Error(`Temporary Gemini error: ${message}`);
+                }
+
+                throw new Error(`Gemini API error: ${message}`);
             }
 
             return res;
@@ -130,11 +145,13 @@ function App() {
                 },
             ]);
         } catch (error) {
+            const detail = error instanceof Error ? error.message : 'Unknown error';
+
             setMessages((current) => [
                 ...current,
                 {
                     id: crypto.randomUUID(),
-                    message: 'I could not reach the API right now. Please check your Gemini key and try again.',
+                    message: `I could not reach Gemini. ${detail}`,
                     sender: 'bot',
                 },
             ]);
