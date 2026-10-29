@@ -4,7 +4,7 @@ import ChatMessage from './components/ChatMessage';
 import TypingIndicator from './components/TypingIndicator';
 
 const API_KEY = import.meta.env.VITE_GEMINI_API_KEY?.trim();
-const GEMINI_MODEL = import.meta.env.VITE_GEMINI_MODEL || 'gemini-3.8-flash';
+const GEMINI_MODEL = import.meta.env.VITE_GEMINI_MODEL || 'gemini-3.6-flash';
 const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
 
 function App() {
